@@ -62,6 +62,7 @@ h2{font-size:17px;margin:2px 0 10px}
 .ex .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
 .ex .meta{display:flex;justify-content:space-between;gap:8px;margin:4px 0 8px}
 .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--soft);color:var(--accent);margin:4px 4px 0 0}
+.unit{font-size:12px;color:var(--muted);margin:-4px 0 8px}
 .warn{font-size:12px;color:var(--accent);margin:-2px 0 8px}
 .sets{display:grid;grid-template-columns:24px 1fr 1fr 38px;gap:6px;align-items:center}
 .sets label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
@@ -198,6 +199,20 @@ select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);b
       </ul>
     </div>
     <div class="card">
+      <h2>How to record the weight</h2>
+      <table>
+        <tr><th>Equipment</th><th>Write down</th></tr>
+        <tr><td>Dumbbells</td><td>One dumbbell (two 12 kg → <b>12</b>)</td></tr>
+        <tr><td>Barbell / EZ bar</td><td>Total, bar included (20 kg bar + 10 each side → <b>40</b>)</td></tr>
+        <tr><td>Cable / pin machines</td><td>Number on the stack. Single-arm cable: that arm's stack</td></tr>
+        <tr><td>Plate-loaded machine</td><td>All plates, both sides added</td></tr>
+        <tr><td>Smith machine</td><td>Plates only, both sides added</td></tr>
+        <tr><td>Assisted pull-up / dip</td><td>Assist weight (lower = harder)</td></tr>
+        <tr><td>Bodyweight abs</td><td>Reps only</td></tr>
+      </table>
+      <p class="muted" style="margin:8px 0 0">What matters most is recording the same way every time, because the app compares you to your own last session.</p>
+    </div>
+    <div class="card">
       <h2>Effort</h2>
       <ul>
         <li>Stop most sets with about <b>1–2 reps left</b>.</li>
@@ -297,6 +312,24 @@ const LIB = {
   captain_chair:{n:"Captain's chair knee raise",lo:10,hi:15,rest:60},
   leg_raise:{n:"Lying leg raise",lo:10,hi:15,rest:60}
 };
+const UNIT_TYPES = {
+  db:{short:"kg / dumbbell", text:"Weight of ONE dumbbell (e.g. two 12s → 12)"},
+  bb:{short:"kg total", text:"Total on the bar, bar included (Olympic bar = 20 kg; check the EZ bar's weight)"},
+  smith:{short:"kg plates", text:"Plates only, both sides added (Smith bars differ, so leave the bar out)"},
+  stack:{short:"kg on stack", text:"The number where the pin is on the weight stack"},
+  plate:{short:"kg plates", text:"All plates loaded, both sides added (the machine itself isn't counted)"},
+  assist:{short:"assist kg", text:"Assistance weight on the stack. LOWER is harder, so progress by going down"},
+  bw:{short:"kg added", text:"Bodyweight: log reps only. Enter kg only if you hold extra weight"}
+};
+const UNIT = {
+  inc_db:"db",flat_db:"db",db_lat:"db",rear_db:"db",db_curl:"db",hammer_curl:"db",incline_curl:"db",preacher:"db",oh_db_ext:"db",wrist_curl:"db",rev_wrist:"db",db_row:"db",
+  inc_bb:"bb",flat_bb:"bb",ez_curl:"bb",skullcrusher:"bb",bb_wrist_curl:"bb",bb_rev_wrist:"bb",reverse_curl:"bb",
+  smith_inc:"smith",smith_flat:"smith",
+  mach_row:"plate",inc_machine:"plate",
+  assist_pullup:"assist",machine_dip:"assist",
+  knee_raise:"bw",captain_chair:"bw",leg_raise:"bw",decline_crunch:"bw"
+};
+function unitOf(id){ return UNIT_TYPES[UNIT[id] || "stack"] }
 const DAYS = {
   A:{name:"Chest + biceps focus", slots:[
     {id:"A1",m:"Upper chest",s:3,def:"inc_bb",alts:["inc_db","inc_machine","smith_inc"]},
@@ -379,8 +412,14 @@ function suggestion(exId){
   const reps = last.sets.map(x => +x.r || 0), ws = last.sets.map(x => +x.w || 0);
   const top = Math.max(...ws);
   if(reps.length && reps.every(r => r >= e.hi)){
-    const step = e.c ? 2.5 : 1;
-    return {up:true, w: top ? +(top+step).toFixed(1) : "", text:"You hit "+e.hi+" reps on every set → go to "+(top ? (top+step)+" kg" : "a bit heavier")+" today."};
+    if(UNIT[exId] === "bw") return {text:"You hit "+e.hi+" reps on every set → slow the reps down, or hold a light dumbbell."};
+    if(UNIT[exId] === "assist"){
+      const low = Math.min(...ws.filter(w => w > 0));
+      const nw = isFinite(low) ? Math.max(0, low - 5) : "";
+      return {up:true, w:nw, text:"You hit "+e.hi+" reps on every set → lower the assist"+(nw !== "" ? " to "+nw+" kg" : "")+" today."};
+    }
+    const step = e.c ? 2.5 : (UNIT[exId] === "db" ? 1 : 2.5);
+    return {up:true, w: top ? +(top+step).toFixed(1) : "", text:"You hit "+e.hi+" reps on every set → go to "+(top ? (top+step)+" kg" : "a bit heavier")+" today (or the next weight up)."};
   }
   return {w: top || "", text:"Same weight"+(top ? " ("+top+" kg)" : "")+", try to beat last time by a rep."};
 }
@@ -494,9 +533,10 @@ function renderToday(){
         <button class="btn ghost sm" data-swap="${slot.id}">Swap</button>
       </div>
       <div class="meta"><span class="muted">${n} × ${e.lo}–${e.hi}${e.note ? " "+esc(e.note) : ""}</span><span class="muted">rest ${fmtRest(e.rest)}</span></div>
+      <div class="unit">⚖️ ${esc(unitOf(cur.ex).text)}</div>
       ${e.warn ? `<div class="warn">${esc(e.warn)}</div>` : ""}
       <div class="sets">
-        <span></span><label>kg</label><label>reps</label><span></span>
+        <span></span><label>${esc(unitOf(cur.ex).short)}</label><label>reps</label><span></span>
         ${cur.rows.map((x,i) => `
           <span class="n">${i+1}</span>
           <input inputmode="decimal" data-slot="${slot.id}" data-i="${i}" data-f="w" value="${esc(x.w)}" placeholder="${esc(sug.w || (last && last.sets[i] ? last.sets[i].w : ""))}" aria-label="Set ${i+1} weight">
