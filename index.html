@@ -62,6 +62,17 @@ h2{font-size:17px;margin:2px 0 10px}
 .ex .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
 .ex .meta{display:flex;justify-content:space-between;gap:8px;margin:4px 0 8px}
 .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--soft);color:var(--accent);margin:4px 4px 0 0}
+.tech{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+.anim{position:relative;width:100%;max-width:320px;aspect-ratio:4/3;margin:0 auto 10px;border-radius:12px;overflow:hidden;background:#fff}
+.anim img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.anim img.f1{animation:flip 2.4s infinite}
+@keyframes flip{0%,40%{opacity:0}50%,90%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){.anim img.f1{animation:none;opacity:0}}
+.anim .lbl{position:absolute;left:8px;bottom:6px;font-size:11px;background:rgba(0,0,0,.55);color:#fff;padding:2px 6px;border-radius:6px}
+.tech h4{margin:8px 0 4px;font-size:14px}
+.tech ol,.tech ul{margin:0;padding-left:20px;font-size:14px}
+.tech .bad li::marker{content:"✗  ";color:var(--accent)}
+.thumb{width:56px;height:42px;object-fit:contain;background:#fff;border-radius:6px;float:right;margin-left:8px}
 .unit{font-size:12px;color:var(--muted);margin:-4px 0 8px}
 .warn{font-size:12px;color:var(--accent);margin:-2px 0 8px}
 .sets{display:grid;grid-template-columns:24px 1fr 1fr 38px;gap:6px;align-items:center}
@@ -239,6 +250,7 @@ select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);b
     <div class="card">
       <h2>App</h2>
       <p class="muted" style="margin-top:0">Install it: on Android/Chrome use <b>Install app</b> or <b>Add to Home screen</b> from the menu. On iPhone: Share → <b>Add to Home Screen</b>.</p>
+      <p class="muted">Exercise pictures: <a href="https://github.com/yuhonas/free-exercise-db" target="_blank" rel="noopener">free-exercise-db</a> (public domain).</p>
       <button class="btn ghost" id="installBtn" style="display:none">Install app</button>
     </div>
   </section>
@@ -260,6 +272,7 @@ select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);b
   <div class="sheet" id="sheet"></div>
 </div>
 
+<script src="tips.js"></script>
 <script>
 /* ---------- exercise library ---------- */
 const LIB = {
@@ -545,14 +558,23 @@ function renderToday(){
       </div>
       <div class="last">${last ? "Last ("+esc(last.date)+"): "+esc(fmtSets(last.sets)) : "No history for this exercise yet."}</div>
       <div class="hint">${esc(sug.text)}</div>
-      <div class="links"><a href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">How to do it ↗</a></div>
+      <div class="row" style="margin-top:8px"><button class="btn ghost sm" data-tech="${slot.id}">${openTech.has(slot.id) ? "Hide technique" : "Technique & pictures"}</button><a class="muted" style="font-size:12px" href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">Video ↗</a></div>
+      ${openTech.has(slot.id) ? `<div class="tech">${techHTML(cur.ex)}</div>` : ""}
     </div>`;
   }).join("");
   renderWeek();
   save();
 }
+function hasImg(id){ return !["assist_pullup","machine_lat"].includes(id) }
+function techHTML(id){
+  const t = (typeof TIPS !== "undefined" && TIPS[id]) || null;
+  const img = hasImg(id) ? `<div class="anim" aria-label="Start and end position of ${esc(LIB[id].n)}"><img class="f0" src="img/${id}-0.jpg" alt="${esc(LIB[id].n)} start position" loading="lazy"><img class="f1" src="img/${id}-1.jpg" alt="${esc(LIB[id].n)} end position" loading="lazy"><span class="lbl">start ⇄ end</span></div>` : "";
+  if(!t) return img;
+  return img + `<h4>How to do it</h4><ol>${t.s.map(x => "<li>"+esc(x)+"</li>").join("")}</ol><h4>Avoid</h4><ul class="bad">${t.a.map(x => "<li>"+esc(x)+"</li>").join("")}</ul>`;
+}
 function fmtRest(s){ return s >= 120 ? (s/60)+" min" : s+" s" }
 
+const openTech = new Set();
 /* ---------- swap sheet ---------- */
 function openSwap(slotId){
   const slot = [...DAYS.A.slots, ...DAYS.B.slots].find(s => s.id === slotId);
@@ -562,7 +584,7 @@ function openSwap(slotId){
     <p class="muted" style="margin:0 0 4px">Same muscle, so your weekly volume stays the same. Each exercise keeps its own history.</p>
     ${opts.map(id => {
       const e = LIB[id], last = lastFor(id);
-      return `<button class="opt ${id === cur ? "on" : ""}" data-pick="${id}" data-slot="${slot.id}">${esc(e.n)}${id === slot.def ? " · default" : ""}
+      return `<button class="opt ${id === cur ? "on" : ""}" data-pick="${id}" data-slot="${slot.id}">${hasImg(id) ? `<img class="thumb" src="img/${id}-1.jpg" alt="" loading="lazy">` : ""}${esc(e.n)}${id === slot.def ? " · default" : ""}
         <small>${e.lo}–${e.hi} reps${last ? " · last "+esc(last.date)+": "+esc(fmtSets(last.sets)) : " · not done yet"}</small></button>`;
     }).join("")}
     <button class="btn ghost" style="width:100%;margin-top:6px" data-close>Cancel</button>`;
@@ -663,6 +685,7 @@ document.addEventListener("click", ev => {
     }
     return;
   }
+  if(t.dataset.tech){ openTech.has(t.dataset.tech) ? openTech.delete(t.dataset.tech) : openTech.add(t.dataset.tech); renderToday(); return; }
   if(t.dataset.swap){ openSwap(t.dataset.swap); return; }
   if(t.dataset.pick){
     const slot = [...DAYS.A.slots, ...DAYS.B.slots].find(s => s.id === t.dataset.slot);
