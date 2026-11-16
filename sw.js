@@ -1,6 +1,6 @@
 // Gym Log service worker: works offline, updates in the background.
-const CACHE = "gymlog-v2-4";
-const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./maskable-512.png", "./tips.js"];
+const CACHE = "gymlog-v3-1";
+const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./maskable-512.png", "./tips.js", "./data.js"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
