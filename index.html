@@ -397,7 +397,7 @@ function renderHome(){
   const resuming = state.active && anyLogged(L);
   const trainedToday = state.history.some(h => h.date === today());
   $("#app").innerHTML = `
-    <header class="top"><div class="brand">Gym Log</div><a href="groceries/" style="color:var(--muted);font-size:14px;margin-left:auto;margin-right:4px">Groceries</a>
+    <header class="top"><div class="brand">Gym Log</div><a href="https://alhaiqi.github.io/groceries/" style="color:var(--muted);font-size:14px;margin-left:auto;margin-right:4px">Groceries</a>
       <div class="seg" role="group" aria-label="Sessions per week">
         <button data-target="3" aria-pressed="${state.target === 3}">3 days</button><button data-target="4" aria-pressed="${state.target === 4}">4 days</button>
       </div></header>
